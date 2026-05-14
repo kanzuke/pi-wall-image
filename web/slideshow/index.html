@@ -45,51 +45,38 @@ img {
 let images = [];
 let current = 0;
 
-//
-// Recharge la liste des images
-//
 async function loadImages() {
 
     try {
 
-        const response = await fetch('/images/');
+        const response = await fetch('/slideshow/images/');
         const text = await response.text();
 
         const parser = new DOMParser();
         const doc = parser.parseFromString(text, 'text/html');
 
-        const newImages = [...doc.querySelectorAll('a')]
-            .map(a => a.href)
-            .filter(h =>
-                h.match(/\.(jpg|jpeg|png|gif|webp)$/i)
-            );
+        images = [];
 
-        //
-        // Mise à jour seulement si changement
-        //
-        if (JSON.stringify(newImages) !== JSON.stringify(images)) {
+        doc.querySelectorAll('a').forEach(link => {
 
-            images = newImages;
+            const href = link.getAttribute('href');
 
-            //
-            // Sécurise l'index courant
-            //
-            if (current >= images.length) {
-                current = 0;
+            if (
+                href &&
+                href.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+            ) {
+                images.push('/slideshow/images/' + href);
             }
+        });
 
-            console.log("Liste images mise à jour :", images);
-        }
+        console.log(images);
 
-    } catch (err) {
+    } catch(err) {
 
-        console.error("Erreur chargement images :", err);
+        console.error(err);
     }
 }
 
-//
-// Affiche l'image suivante
-//
 function showImage() {
 
     if(images.length === 0) {
@@ -107,33 +94,11 @@ function showImage() {
     }
 }
 
-//
-// Initialisation
-//
-async function init() {
+setInterval(showImage, 10000);
 
-    //
-    // Chargement initial
-    //
-    await loadImages();
+setInterval(loadImages, 60000);
 
-    //
-    // Première image immédiate
-    //
-    showImage();
-
-    //
-    // Rotation toutes les 10 secondes
-    //
-    setInterval(showImage, 10000);
-
-    //
-    // Rescan du dossier toutes les 60 secondes
-    //
-    setInterval(loadImages, 60000);
-}
-
-init();
+loadImages();
 
 </script>
 

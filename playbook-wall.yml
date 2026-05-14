@@ -33,7 +33,7 @@
 
     web_root: /var/www/wall
 
-    image_path: /srv/wall/images
+    image_path: /var/www/wall/slideshow/images
 
     screen_width: 1920
     screen_height: 1080
@@ -187,12 +187,7 @@
 
               root {{ web_root }};
               index index.html;
-
-              location /images/ {
-                  alias {{ image_path }}/;
-                  autoindex on;
-              }
-
+              autoindex on;
           }
 
     - name: Enable nginx site
