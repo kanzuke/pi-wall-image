@@ -1,89 +1,141 @@
 <!DOCTYPE html>
-          <html lang="fr">
+<html lang="fr">
 
-          <head>
+<head>
 
-            <meta charset="UTF-8">
+<meta charset="UTF-8">
 
-            <style>
+<style>
 
-              html, body {
-                  margin: 0;
-                  padding: 0;
-                  width: 100%;
-                  height: 100%;
-                  background: black;
-                  overflow: hidden;
-              }
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: black;
+    overflow: hidden;
+}
 
-              #container {
-                  width: 100%;
-                  height: 100%;
-                  display: flex;
-                  justify-content: center;
-                  align-items: center;
-              }
+#container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
 
-              img {
-                  max-width: 100%;
-                  max-height: 100%;
-                  object-fit: contain;
-              }
+img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
 
-            </style>
+</style>
 
-          </head>
+</head>
 
-          <body>
+<body>
 
-            <div id="container">
-                <img id="slide">
-            </div>
+<div id="container">
+    <img id="slide">
+</div>
 
-            <script>
+<script>
 
-              let images = [];
-              let current = 0;
+let images = [];
+let current = 0;
 
-              async function loadImages() {
+//
+// Recharge la liste des images
+//
+async function loadImages() {
 
-                  const response = await fetch('/images/');
-                  const text = await response.text();
+    try {
 
-                  const parser = new DOMParser();
-                  const doc = parser.parseFromString(text, 'text/html');
+        const response = await fetch('/images/');
+        const text = await response.text();
 
-                  images = [...doc.querySelectorAll('a')]
-                      .map(a => a.href)
-                      .filter(h =>
-                          h.match(/\.(jpg|jpeg|png|gif|webp)$/i)
-                      );
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'text/html');
 
-                  if(images.length > 0) {
+        const newImages = [...doc.querySelectorAll('a')]
+            .map(a => a.href)
+            .filter(h =>
+                h.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+            );
 
-                      showImage();
+        //
+        // Mise à jour seulement si changement
+        //
+        if (JSON.stringify(newImages) !== JSON.stringify(images)) {
 
-                      setInterval(showImage, {{ slideshow_delay }});
-                  }
-              }
+            images = newImages;
 
-              function showImage() {
+            //
+            // Sécurise l'index courant
+            //
+            if (current >= images.length) {
+                current = 0;
+            }
 
-                  const img = document.getElementById('slide');
+            console.log("Liste images mise à jour :", images);
+        }
 
-                  img.src = images[current];
+    } catch (err) {
 
-                  current++;
+        console.error("Erreur chargement images :", err);
+    }
+}
 
-                  if(current >= images.length) {
-                      current = 0;
-                  }
-              }
+//
+// Affiche l'image suivante
+//
+function showImage() {
 
-              loadImages();
+    if(images.length === 0) {
+        return;
+    }
 
-            </script>
+    const img = document.getElementById('slide');
 
-          </body>
+    img.src = images[current];
 
-          </html>
+    current++;
+
+    if(current >= images.length) {
+        current = 0;
+    }
+}
+
+//
+// Initialisation
+//
+async function init() {
+
+    //
+    // Chargement initial
+    //
+    await loadImages();
+
+    //
+    // Première image immédiate
+    //
+    showImage();
+
+    //
+    // Rotation toutes les 10 secondes
+    //
+    setInterval(showImage, 10000);
+
+    //
+    // Rescan du dossier toutes les 60 secondes
+    //
+    setInterval(loadImages, 60000);
+}
+
+init();
+
+</script>
+
+</body>
+</html>

@@ -41,7 +41,10 @@
     half_width: 960
     half_height: 540
 
-    xmpp_url: "https://conversejs.org/fullscreen.html"
+    xmpp_url: "https://chaf.fapf.fr/inverse"
+
+    smb_user: wall
+    smb_password: wallboard
 
   tasks:
 
@@ -98,9 +101,25 @@
       file:
         path: "{{ image_path }}"
         state: directory
-        owner: pi
-        group: pi
+        owner: "{{ smb_user }}"
+        group: "{{ smb_user }}"
         mode: "0775"
+
+    # ----------------------------------------------------------
+    # SMB USER
+    # ----------------------------------------------------------
+
+    - name: Create SMB user
+      user:
+        name: "{{ smb_user }}"
+        shell: /usr/sbin/nologin
+        create_home: false
+
+    - name: Set SMB password
+      shell: |
+        (echo "{{ smb_password }}"; echo "{{ smb_password }}") | smbpasswd -a -s "{{ smb_user }}"
+      args:
+        executable: /bin/bash
 
     # ----------------------------------------------------------
     # COPY WEB FILES
@@ -134,7 +153,8 @@
               path = {{ image_path }}
               browseable = yes
               writable = yes
-              guest ok = yes
+              guest ok = no
+              valid users = {{ smb_user }}
               create mask = 0664
               directory mask = 0775
 
@@ -273,7 +293,7 @@
           default_border pixel 0
 
           #
-          # Lancement
+          # Lancement auto
           #
           exec_always ~/start-wall.sh
 
@@ -336,5 +356,9 @@
                 * XMPP
             - cadre bas droite libre
 
-          Partage SMB images :
-            smb://raspberrypi/wallimages
+          Partage SMB :
+            \\raspberrypi\wallimages
+
+          Identifiants SMB :
+            utilisateur : {{ smb_user }}
+            mot de passe : {{ smb_password }}
