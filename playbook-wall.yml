@@ -1,0 +1,340 @@
+# playbook-wall.yml
+#
+# Mur d'images Raspberry Pi 4
+#
+# Gestion des cadres par SWAY
+#
+# Zones :
+#   Haut gauche  : Horloges
+#   Haut droite  : Slideshow SMB
+#   Bas gauche   : XMPP
+#   Bas droite   : Libre
+#
+# Structure du dépôt :
+#
+# .
+# ├── playbook-wall.yml
+# └── web/
+#     ├── clock/
+#     │   └── index.html
+#     └── slideshow/
+#         └── index.html
+#
+# Déploiement :
+# ansible-playbook -i localhost, -c local playbook-wall.yml
+#
+
+---
+- name: Deploy wallboard
+  hosts: localhost
+  become: true
+
+  vars:
+
+    web_root: /var/www/wall
+
+    image_path: /srv/wall/images
+
+    screen_width: 1920
+    screen_height: 1080
+
+    half_width: 960
+    half_height: 540
+
+    xmpp_url: "https://conversejs.org/fullscreen.html"
+
+  tasks:
+
+    # ----------------------------------------------------------
+    # UPDATE
+    # ----------------------------------------------------------
+
+    - name: Update apt cache
+      apt:
+        update_cache: true
+
+    # ----------------------------------------------------------
+    # INSTALL
+    # ----------------------------------------------------------
+
+    - name: Install packages
+      apt:
+        name:
+          - sway
+          - seatd
+          - wayland-protocols
+          - xwayland
+          - chromium
+          - nginx
+          - samba
+          - wayvnc
+          - rsync
+          - jq
+        state: present
+
+    # ----------------------------------------------------------
+    # ENABLE SEATD
+    # ----------------------------------------------------------
+
+    - name: Enable seatd
+      service:
+        name: seatd
+        state: started
+        enabled: true
+
+    # ----------------------------------------------------------
+    # DIRECTORIES
+    # ----------------------------------------------------------
+
+    - name: Create web root
+      file:
+        path: "{{ web_root }}"
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: "0755"
+
+    - name: Create image directory
+      file:
+        path: "{{ image_path }}"
+        state: directory
+        owner: pi
+        group: pi
+        mode: "0775"
+
+    # ----------------------------------------------------------
+    # COPY WEB FILES
+    # ----------------------------------------------------------
+
+    - name: Synchronize web files
+      synchronize:
+        src: web/
+        dest: "{{ web_root }}/"
+        recursive: true
+        delete: true
+
+    - name: Fix permissions
+      file:
+        path: "{{ web_root }}"
+        owner: www-data
+        group: www-data
+        recurse: true
+
+    # ----------------------------------------------------------
+    # SAMBA
+    # ----------------------------------------------------------
+
+    - name: Configure samba share
+      blockinfile:
+        path: /etc/samba/smb.conf
+        marker: "# {mark} WALLBOARD"
+        block: |
+
+          [wallimages]
+              path = {{ image_path }}
+              browseable = yes
+              writable = yes
+              guest ok = yes
+              create mask = 0664
+              directory mask = 0775
+
+    - name: Restart samba
+      service:
+        name: smbd
+        state: restarted
+        enabled: true
+
+    # ----------------------------------------------------------
+    # NGINX
+    # ----------------------------------------------------------
+
+    - name: Remove nginx default site
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+
+    - name: Configure nginx
+      copy:
+        dest: /etc/nginx/sites-available/wall
+        content: |
+
+          server {
+
+              listen 80;
+
+              root {{ web_root }};
+              index index.html;
+
+              location /images/ {
+                  alias {{ image_path }}/;
+                  autoindex on;
+              }
+
+          }
+
+    - name: Enable nginx site
+      file:
+        src: /etc/nginx/sites-available/wall
+        dest: /etc/nginx/sites-enabled/wall
+        state: link
+        force: true
+
+    - name: Validate nginx config
+      command: nginx -t
+
+    - name: Restart nginx
+      service:
+        name: nginx
+        state: restarted
+        enabled: true
+
+    # ----------------------------------------------------------
+    # SWAY CONFIG
+    # ----------------------------------------------------------
+
+    - name: Create sway config directory
+      file:
+        path: /home/pi/.config/sway
+        state: directory
+        owner: pi
+        group: pi
+        mode: "0755"
+
+    - name: Create wall startup script
+      copy:
+        dest: /home/pi/start-wall.sh
+        owner: pi
+        group: pi
+        mode: "0755"
+        content: |
+
+          #!/bin/bash
+
+          #
+          # Horloges
+          #
+          chromium \
+            --app=http://localhost/clock \
+            --class=clock \
+            --window-size={{ half_width }},{{ half_height }} \
+            --window-position=0,0 \
+            --disable-infobars \
+            --disable-session-crashed-bubble \
+            --noerrdialogs &
+
+          sleep 3
+
+          #
+          # Slideshow
+          #
+          chromium \
+            --app=http://localhost/slideshow \
+            --class=slideshow \
+            --window-size={{ half_width }},{{ half_height }} \
+            --window-position={{ half_width }},0 \
+            --disable-infobars \
+            --disable-session-crashed-bubble \
+            --noerrdialogs &
+
+          sleep 3
+
+          #
+          # XMPP
+          #
+          chromium \
+            --app={{ xmpp_url }} \
+            --class=xmpp \
+            --window-size={{ half_width }},{{ half_height }} \
+            --window-position=0,{{ half_height }} \
+            --disable-infobars \
+            --disable-session-crashed-bubble \
+            --noerrdialogs &
+
+    - name: Configure sway
+      copy:
+        dest: /home/pi/.config/sway/config
+        owner: pi
+        group: pi
+        mode: "0644"
+        content: |
+
+          output * bg #000000 solid_color
+
+          #
+          # Désactiver barre
+          #
+          bar {
+              mode invisible
+          }
+
+          #
+          # Pas de bordures
+          #
+          default_border pixel 0
+
+          #
+          # Lancement
+          #
+          exec_always ~/start-wall.sh
+
+    # ----------------------------------------------------------
+    # AUTOLOGIN
+    # ----------------------------------------------------------
+
+    - name: Create systemd override directory
+      file:
+        path: /etc/systemd/system/getty@tty1.service.d
+        state: directory
+        mode: "0755"
+
+    - name: Configure tty1 autologin
+      copy:
+        dest: /etc/systemd/system/getty@tty1.service.d/autologin.conf
+        mode: "0644"
+        content: |
+
+          [Service]
+          ExecStart=
+          ExecStart=-/sbin/agetty --autologin pi --noclear %I $TERM
+
+    - name: Reload systemd
+      systemd:
+        daemon_reload: true
+
+    # ----------------------------------------------------------
+    # AUTO START SWAY
+    # ----------------------------------------------------------
+
+    - name: Configure bash_profile
+      copy:
+        dest: /home/pi/.bash_profile
+        owner: pi
+        group: pi
+        mode: "0644"
+        content: |
+
+          if [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
+              exec sway
+          fi
+
+    # ----------------------------------------------------------
+    # FINAL MESSAGE
+    # ----------------------------------------------------------
+
+    - name: Deployment complete
+      debug:
+        msg: |
+
+          Déploiement terminé.
+
+          Après reboot :
+            - autologin utilisateur pi
+            - lancement automatique Sway
+            - ouverture des 3 cadres :
+                * horloges
+                * slideshow
+                * XMPP
+            - cadre bas droite libre
+
+          Partage SMB images :
+            smb://raspberrypi/wallimages

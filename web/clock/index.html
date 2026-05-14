@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+          <html lang="fr">
+
+          <head>
+
+            <meta charset="UTF-8">
+
+            <style>
+
+              html, body {
+                  margin: 0;
+                  padding: 0;
+                  width: 100%;
+                  height: 100%;
+                  background: black;
+                  color: #00ff88;
+                  font-family: monospace;
+              }
+
+              .container {
+                  display: flex;
+                  flex-direction: column;
+                  justify-content: center;
+                  align-items: center;
+                  height: 100%;
+                  gap: 40px;
+              }
+
+              .clock {
+                  text-align: center;
+              }
+
+              .label {
+                  font-size: 2em;
+                  color: #888;
+              }
+
+              .time {
+                  font-size: 5em;
+                  font-weight: bold;
+              }
+
+            </style>
+
+          </head>
+
+          <body>
+
+            <div class="container">
+
+                <div class="clock">
+                    <div class="label">UTC</div>
+                    <div id="utc" class="time"></div>
+                </div>
+
+                <div class="clock">
+                    <div class="label">UTC-10</div>
+                    <div id="utc10" class="time"></div>
+                </div>
+
+            </div>
+
+            <script>
+
+              function updateClocks() {
+
+                  const now = new Date();
+
+                  document.getElementById("utc").innerText =
+                      now.toLocaleTimeString("fr-FR", {
+                          timeZone: "UTC"
+                      });
+
+                  document.getElementById("utc10").innerText =
+                      now.toLocaleTimeString("fr-FR", {
+                          timeZone: "Pacific/Tahiti"
+                      });
+              }
+
+              updateClocks();
+
+              setInterval(updateClocks, 1000);
+
+            </script>
+
+          </body>
+
+          </html>
