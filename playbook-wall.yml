@@ -86,6 +86,23 @@
         enabled: true
 
     # ----------------------------------------------------------
+    # SMB USER
+    # ----------------------------------------------------------
+
+    - name: Create SMB user
+      user:
+        name: "{{ smb_user }}"
+        shell: /usr/sbin/nologin
+        create_home: false
+
+    - name: Set SMB password
+      shell: |
+        (echo "{{ smb_password }}"; echo "{{ smb_password }}") | smbpasswd -a -s "{{ smb_user }}"
+      args:
+        executable: /bin/bash
+
+
+    # ----------------------------------------------------------
     # DIRECTORIES
     # ----------------------------------------------------------
 
@@ -105,21 +122,7 @@
         group: "{{ smb_user }}"
         mode: "0775"
 
-    # ----------------------------------------------------------
-    # SMB USER
-    # ----------------------------------------------------------
 
-    - name: Create SMB user
-      user:
-        name: "{{ smb_user }}"
-        shell: /usr/sbin/nologin
-        create_home: false
-
-    - name: Set SMB password
-      shell: |
-        (echo "{{ smb_password }}"; echo "{{ smb_password }}") | smbpasswd -a -s "{{ smb_user }}"
-      args:
-        executable: /bin/bash
 
     # ----------------------------------------------------------
     # COPY WEB FILES
@@ -212,63 +215,13 @@
     # SWAY CONFIG
     # ----------------------------------------------------------
 
-    - name: Create sway config directory
+    - name: Create sway config dir
       file:
         path: /home/pi/.config/sway
         state: directory
         owner: pi
         group: pi
         mode: "0755"
-
-    - name: Create wall startup script
-      copy:
-        dest: /home/pi/start-wall.sh
-        owner: pi
-        group: pi
-        mode: "0755"
-        content: |
-
-          #!/bin/bash
-
-          #
-          # Horloges
-          #
-          chromium \
-            --app=http://localhost/clock \
-            --class=clock \
-            --window-size={{ half_width }},{{ half_height }} \
-            --window-position=0,0 \
-            --disable-infobars \
-            --disable-session-crashed-bubble \
-            --noerrdialogs &
-
-          sleep 3
-
-          #
-          # Slideshow
-          #
-          chromium \
-            --app=http://localhost/slideshow \
-            --class=slideshow \
-            --window-size={{ half_width }},{{ half_height }} \
-            --window-position={{ half_width }},0 \
-            --disable-infobars \
-            --disable-session-crashed-bubble \
-            --noerrdialogs &
-
-          sleep 3
-
-          #
-          # XMPP
-          #
-          chromium \
-            --app={{ xmpp_url }} \
-            --class=xmpp \
-            --window-size={{ half_width }},{{ half_height }} \
-            --window-position=0,{{ half_height }} \
-            --disable-infobars \
-            --disable-session-crashed-bubble \
-            --noerrdialogs &
 
     - name: Configure sway
       copy:
@@ -280,22 +233,29 @@
 
           output * bg #000000 solid_color
 
-          #
-          # Désactiver barre
-          #
-          bar {
-              mode invisible
-          }
+          exec chromium \
+            --kiosk \
+            --start-fullscreen \
+            --disable-infobars \
+            --disable-session-crashed-bubble \
+            --noerrdialogs \
+            http://localhost
 
-          #
-          # Pas de bordures
-          #
-          default_border pixel 0
+    # ----------------------------------------------------------
+    # AUTO START SWAY
+    # ----------------------------------------------------------
 
-          #
-          # Lancement auto
-          #
-          exec_always ~/start-wall.sh
+    - name: Configure autostart sway
+      copy:
+        dest: /home/pi/.bash_profile
+        owner: pi
+        group: pi
+        mode: "0644"
+        content: |
+
+          if [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
+              exec sway
+          fi
 
     # ----------------------------------------------------------
     # AUTOLOGIN
