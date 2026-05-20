@@ -206,6 +206,56 @@
         state: restarted
         enabled: true
 
+
+    - name: Deploy update-wall-ip script
+      ansible.builtin.copy:
+        dest: /usr/local/bin/update-wall-ip.sh
+        owner: root
+        group: root
+        mode: '0755'
+        content: |
+          #!/bin/bash
+
+          OUTPUT="{{ web_root }}/ip.txt"
+
+          while true
+          do
+              IP=$(ip route get 1 | awk '{print $7;exit}')
+
+              echo "$IP" > "$OUTPUT"
+
+              sleep 5
+          done
+
+    - name: Deploy wall-ip systemd service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/wall-ip.service
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Wall IP Updater
+          After=network-online.target
+
+          [Service]
+          ExecStart=/usr/local/bin/update-wall-ip.sh
+          Restart=always
+          User=root
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Enable and start wall-ip service
+      ansible.builtin.systemd:
+        name: wall-ip.service
+        enabled: true
+        state: started
+
     # ----------------------------------------------------------
     # SWAY CONFIG
     # ----------------------------------------------------------

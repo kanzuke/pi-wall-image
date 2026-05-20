@@ -38,6 +38,27 @@
                   background: #050505;
               }
 
+              #ip-footer {
+                position: fixed;
+                bottom: 6px;
+                right: 12px;
+
+                font-size: 12px;
+                font-family: Arial, sans-serif;
+
+                color: rgba(255,255,255,0.55);
+
+                background: rgba(0,0,0,0.25);
+
+                padding: 2px 8px;
+
+                border-radius: 6px;
+
+                z-index: 9999;
+
+                pointer-events: none;
+            }
+
             </style>
 
           </head>
@@ -55,6 +76,35 @@
                 <div class="empty"></div>
 
             </div>
+
+
+            <div id="ip-footer">
+                IP : ...
+            </div>
+
+            <script>
+            async function refreshIP() {
+                try {
+                    const response = await fetch(
+                        "ip.txt?t=" + Date.now()
+                    );
+
+                    const ip = await response.text();
+
+                    document.getElementById("ip-footer").innerText =
+                        "IP : " + ip.trim();
+
+                } catch (e) {
+                    document.getElementById("ip-footer").innerText =
+                        "IP : indisponible";
+                }
+            }
+
+            refreshIP();
+
+            /* rafraîchissement toutes les 10 secondes */
+            setInterval(refreshIP, 10000);
+            </script>
 
           </body>
 

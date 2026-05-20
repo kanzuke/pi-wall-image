@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="3600">
+    <title>Incidents ouverts</title>
+<style>
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    color: #00ff88;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    background: #111;
+    padding: 15px;
+    font-size: 2em;
+    font-weight: bold;
+    border-bottom: 2px solid #222;
+}
+
+
+#last-update {
+    font-size: 0.5em;
+    color: #888;
+    margin-top: 5px;
+}
+
+#incidents {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.incident {
+    border: 1px solid #222;
+    background: #050505;
+    margin-bottom: 10px;
+    padding: 12px;
+    border-radius: 6px;
+}
+
+.title {
+    font-size: 1.4em;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+.meta {
+    margin-top: 8px;
+    color: #999;
+    font-size: 0.95em;
+}
+
+.description {
+    margin-top: 10px;
+    color: #cccccc;
+    line-height: 1.4em;
+}
+
+.priority {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    margin-right: 8px;
+}
+
+.priority-low {
+    background: #004400;
+}
+
+.priority-medium {
+    background: #665500;
+}
+
+.priority-high {
+    background: #660000;
+}
+
+.empty {
+    color: #888;
+    font-size: 1.5em;
+    text-align: center;
+    margin-top: 50px;
+}
+
+</style>
+
+</head>
+
+<script>
+
+// --------------------------------------------------
+// CONFIGURATION
+// --------------------------------------------------
+
+const API_URL = 'https://jocwatch-cjtf.nomad.ops-fapf.lan/api/incidents?incidentStatus=2';
+
+//
+// Si authentification Bearer nécessaire
+//
+const API_TOKEN = 'REMPLACER_PAR_TOKEN';
+
+// --------------------------------------------------
+// UTILITAIRES
+// --------------------------------------------------
+
+function formatDate(dateString) {
+
+    if (!dateString) {
+        return 'N/A';
+    }
+
+    try {
+
+        const d = new Date(dateString);
+
+        return d.toLocaleString('fr-FR');
+
+    } catch {
+
+        return dateString;
+    }
+}
+
+function priorityClass(priority) {
+
+    if (!priority) {
+        return 'priority-low';
+    }
+
+    const p = priority.toString().toLowerCase();
+
+    if (p.includes('high') || p.includes('critical')) {
+        return 'priority-high';
+    }
+
+    if (p.includes('medium')) {
+        return 'priority-medium';
+    }
+
+    return 'priority-low';
+}
+
+
+
+    incidents.forEach(incident => {
+
+        const div = document.createElement('div');
+
+        div.className = 'incident';
+
+        const priority = incident.priority || incident.severity || 'LOW';
+
+        div.innerHTML = `
+
+            <div class="title">
+                ${incident.title || incident.name || 'Incident sans titre'}
+            </div>
+
+            <div class="meta">
+                <span class="priority ${priorityClass(priority)}">
+                    ${priority}
+                </span>
+
+                ID: ${incident.id || 'N/A'}
+                |
+                Début: ${formatDate(incident.startDate || incident.createdAt || incident.date)}
+            </div>
+
+            <div class="description">
+                ${incident.description || 'Aucune description'}
+            </div>
+        `;
+
+        container.appendChild(div);
+    });
+}
+
+// --------------------------------------------------
+// API
+// --------------------------------------------------
+
+async function loadIncidents() {
+
+    try {
+
+        const response = await fetch(API_URL, {
+            headers: {
+                //'Authorization': `Bearer ${API_TOKEN}`,
+                'Accept': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        //
+        // Adapter selon structure réelle API Jocwatch
+        //
+        const incidents = data.items || data.incidents || data;
+
+        renderIncidents(incidents);
+
+        document.getElementById('last-update').innerText =
+            'Dernière mise à jour : ' +
+            new Date().toLocaleTimeString('fr-FR');
+
+    } catch (err) {
+
+        console.error(err);
+
+        document.getElementById('incidents').innerHTML = `
+            <div class="empty">
+                Erreur chargement incidents<br>
+                ${err}
+            </div>
+        `;
+    }
+}
+
+// --------------------------------------------------
+// INITIALISATION
+// --------------------------------------------------
+
+loadIncidents();
+
+//
+// Refresh toutes les minutes
+//
+setInterval(loadIncidents, 60000);
+
+</script>
+
+</body>
+</html>
