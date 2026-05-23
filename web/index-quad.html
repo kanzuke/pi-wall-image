@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+          <html lang="fr">
+
+          <head>
+
+            <meta charset="UTF-8">
+
+            <style>
+
+              html, body {
+                  margin: 0;
+                  padding: 0;
+                  width: 100%;
+                  height: 100%;
+                  overflow: hidden;
+                  background: black;
+                  font-family: Arial, sans-serif;
+              }
+
+              .wall {
+                  display: grid;
+                  grid-template-columns: 1fr 1fr;
+                  grid-template-rows: 1fr 1fr;
+                  width: 100vw;
+                  height: 100vh;
+                  gap: 2px;
+                  background: #111;
+              }
+
+              iframe {
+                  width: 100%;
+                  height: 100%;
+                  border: none;
+                  background: black;
+              }
+
+              .empty {
+                  background: #050505;
+              }
+
+              #ip-footer {
+                position: fixed;
+                bottom: 6px;
+                right: 12px;
+
+                font-size: 12px;
+                font-family: Arial, sans-serif;
+
+                color: rgba(255,255,255,0.55);
+
+                background: rgba(0,0,0,0.25);
+
+                padding: 2px 8px;
+
+                border-radius: 6px;
+
+                z-index: 9999;
+
+                pointer-events: none;
+            }
+
+            </style>
+
+          </head>
+
+          <body>
+
+            <div class="wall">
+
+                <iframe src="/clock/index.html"></iframe>
+
+                <iframe src="/slideshow/index.html"></iframe>
+
+                <iframe src="https://chat.fapf.fr/inverse/"></iframe>
+
+                <div class="empty"></div>
+
+            </div>
+
+
+            <div id="ip-footer">
+                IP : ...
+            </div>
+
+            <script>
+            async function refreshIP() {
+                try {
+                    const response = await fetch(
+                        "ip.txt?t=" + Date.now()
+                    );
+
+                    const ip = await response.text();
+
+                    document.getElementById("ip-footer").innerText =
+                        "IP : " + ip.trim();
+
+                } catch (e) {
+                    document.getElementById("ip-footer").innerText =
+                        "IP : indisponible";
+                }
+            }
+
+            refreshIP();
+
+            /* rafraîchissement toutes les 10 secondes */
+            setInterval(refreshIP, 10000);
+            </script>
+
+          </body>
+
+          </html>
