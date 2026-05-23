@@ -31,9 +31,9 @@
 
   vars:
 
-    web_root: /var/www/wall
+    web_root: "/var/www/wall"
 
-    image_path: /var/www/wall/slideshow/images
+    image_path: "{{ web_root }}/slideshow/images"
 
     screen_width: 1920
     screen_height: 1080
@@ -145,6 +145,47 @@
     # ----------------------------------------------------------
     # SAMBA
     # ----------------------------------------------------------
+
+    - name: Ensure slideshow directory exists
+      file:
+        path: "{{ web_root }}/slideshow/images"
+        state: directory
+        owner: "{{ smb_user }}"
+        group: www-data
+        mode: "0775"
+        recurse: true
+
+    - name: Add www-data to SMB group
+      user:
+        name: www-data
+        groups: "{{ smb_user }}"
+        append: true
+
+    - name: Ensure parent directories are traversable
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - /var
+        - /var/www
+        - /var/www/wall
+        - /var/www/wall/slideshow
+
+
+    - name: Configure Samba interfaces
+      lineinfile:
+        path: /etc/samba/smb.conf
+        regexp: '^interfaces\s*='
+        line: 'interfaces = 0.0.0.0/0'
+        insertafter: '^\[global\]'
+
+    - name: Configure Samba bind interfaces
+      lineinfile:
+        path: /etc/samba/smb.conf
+        regexp: '^bind interfaces only\s*='
+        line: 'bind interfaces only = no'
+        insertafter: '^\[global\]'
 
     - name: Configure samba share
       blockinfile:

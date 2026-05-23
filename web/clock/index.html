@@ -1,88 +1,143 @@
 <!DOCTYPE html>
-          <html lang="fr">
+<html lang="fr">
 
-          <head>
+<head>
 
-            <meta charset="UTF-8">
+<meta charset="UTF-8">
 
-            <style>
+<style>
 
-              html, body {
-                  margin: 0;
-                  padding: 0;
-                  width: 100%;
-                  height: 100%;
-                  background: black;
-                  color: #00ff88;
-                  font-family: monospace;
-              }
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: black;
+    color: #00ff88;
+    font-family: Arial, sans-serif;
+}
 
-              .container {
-                  display: flex;
-                  flex-direction: column;
-                  justify-content: center;
-                  align-items: center;
-                  height: 100%;
-                  gap: 40px;
-              }
+.container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    gap: 50px;
+}
 
-              .clock {
-                  text-align: center;
-                  margin-bottom: 4em;
-              }
+.clock {
+    text-align: center;
+}
 
-              .label {
-                  font-size: 6em;
-                  color: white;
-              }
+.label {
+    font-size: 2em;
+    color: #888;
+    margin-bottom: 10px;
+}
 
-              .time {
-                  font-size: 9em;
-                  font-weight: bold;
-              }
+.time {
+    font-size: 5em;
+    font-weight: bold;
+    line-height: 1em;
+}
 
-            </style>
+.date {
+    margin-top: 10px;
+    font-size: 1.8em;
+    color: #cccccc;
+}
 
-          </head>
+</style>
 
-          <body>
+</head>
 
-            <div class="container">
+<body>
 
-                <div class="clock">
-                    <div class="label">UTC</div>
-                    <div id="utc" class="time"></div>
-                </div>
-                <div class="clock">
-                    <div class="label">UTC-10</div>
-                    <div id="utc10" class="time"></div>
-                </div>
+<div class="container">
 
-            </div>
+    <div class="clock">
 
-            <script>
+        <div class="label">UTC</div>
 
-              function updateClocks() {
+        <div id="utc-time" class="time"></div>
 
-                  const now = new Date();
+        <div id="utc-date" class="date"></div>
 
-                  document.getElementById("utc").innerText =
-                      now.toLocaleTimeString("fr-FR", {
-                          timeZone: "UTC"
-                      });
+    </div>
 
-                  document.getElementById("utc10").innerText =
-                      now.toLocaleTimeString("fr-FR", {
-                          timeZone: "Pacific/Tahiti"
-                      });
-              }
+    <div class="clock">
 
-              updateClocks();
+        <div class="label">Tahiti</div>
 
-              setInterval(updateClocks, 1000);
+        <div id="utc10-time" class="time"></div>
 
-            </script>
+        <div id="utc10-date" class="date"></div>
 
-          </body>
+    </div>
 
-          </html>
+    <div class="clock">
+
+        <div class="label">Paris</div>
+
+        <div id="paris-time" class="time"></div>
+
+        <div id="paris-date" class="date"></div>
+
+    </div>
+
+</div>
+
+<script>
+
+function updateClock(timeId, dateId, timezone) {
+
+    const now = new Date();
+
+    const time = now.toLocaleTimeString('fr-FR', {
+        timeZone: timezone,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+
+    const date = now.toLocaleDateString('fr-FR', {
+        timeZone: timezone,
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+
+    document.getElementById(timeId).innerText = time;
+    document.getElementById(dateId).innerText = date;
+}
+
+function updateClocks() {
+
+    updateClock(
+        'utc-time',
+        'utc-date',
+        'UTC'
+    );
+
+    updateClock(
+        'utc10-time',
+        'utc10-date',
+        'Pacific/Tahiti'
+    );
+
+    updateClock(
+        'paris-time',
+        'paris-date',
+        'Europe/Paris'
+    );
+}
+
+updateClocks();
+
+setInterval(updateClocks, 1000);
+
+</script>
+
+</body>
+</html>
