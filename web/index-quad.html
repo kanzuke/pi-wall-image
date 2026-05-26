@@ -27,7 +27,14 @@
                   background: #111;
               }
 
+              .zone {
+                    overflow: hidden;
+                    background: black;
+                }
+
+
               iframe {
+                  display: block;
                   width: 100%;
                   height: 100%;
                   border: none;
@@ -66,15 +73,18 @@
           <body>
 
             <div class="wall">
-
-                <iframe src="/clock/index.html"></iframe>
-
-                <iframe src="/slideshow/index.html"></iframe>
-
-                <iframe src="https://chat.fapf.fr/inverse/"></iframe>
-
-                <div class="empty"></div>
-
+                <div class="zone">
+                    <iframe src="/clock/index.html"></iframe>
+                </div>
+                <div class="zone">
+                    <iframe src="/slideshow/index.html"></iframe>
+                </div>
+                <div class="zone">
+                    <iframe src="https://chat.fapf.fr/inverse/"></iframe>
+                </div>
+                <div class="zone">
+                    <div class="empty"></div>
+                </div>
             </div>
 
 

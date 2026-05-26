@@ -325,6 +325,8 @@
             --disable-infobars \
             --disable-session-crashed-bubble \
             --noerrdialogs \
+            --disable-features=TranslateUI \
+            --lang=fr \
             http://localhost
 
     # ----------------------------------------------------------

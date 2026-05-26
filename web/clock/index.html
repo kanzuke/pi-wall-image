@@ -15,36 +15,72 @@ html, body {
     background: black;
     color: #00ff88;
     font-family: Arial, sans-serif;
+    overflow: hidden;
 }
 
 .container {
+
+    width: 100%;
+    height: 100%;
+
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
+
     justify-content: center;
     align-items: center;
-    height: 100%;
-    gap: 50px;
+
+    gap: 40px;
+
+    box-sizing: border-box;
+    padding: 20px;
 }
 
 .clock {
+
+    flex: 1 1 400px;
+
+    min-width: 320px;
+    max-width: 700px;
+
     text-align: center;
+
+    border: 1px solid #222;
+    border-radius: 12px;
+
+    background: #050505;
+
+    padding: 25px;
+
+    box-sizing: border-box;
 }
 
 .label {
-    font-size: 2em;
+
+    font-size: clamp(1.5em, 2vw, 2.5em);
+
     color: #888;
-    margin-bottom: 10px;
+
+    margin-bottom: 15px;
 }
 
 .time {
-    font-size: 5em;
+
+    font-size: clamp(3em, 6vw, 6em);
+
     font-weight: bold;
+
     line-height: 1em;
+
+    word-break: keep-all;
 }
 
 .date {
-    margin-top: 10px;
-    font-size: 1.8em;
+
+    margin-top: 15px;
+
+    font-size: clamp(1.2em, 2vw, 2em);
+
     color: #cccccc;
 }
 
@@ -65,14 +101,14 @@ html, body {
         <div id="utc-date" class="date"></div>
 
     </div>
-
+    
     <div class="clock">
 
         <div class="label">Tahiti</div>
 
-        <div id="utc10-time" class="time"></div>
+        <div id="tahiti-time" class="time"></div>
 
-        <div id="utc10-date" class="date"></div>
+        <div id="tahiti-date" class="date"></div>
 
     </div>
 
@@ -109,6 +145,7 @@ function updateClock(timeId, dateId, timezone) {
     });
 
     document.getElementById(timeId).innerText = time;
+
     document.getElementById(dateId).innerText = date;
 }
 
@@ -121,15 +158,15 @@ function updateClocks() {
     );
 
     updateClock(
-        'utc10-time',
-        'utc10-date',
-        'Pacific/Tahiti'
-    );
-
-    updateClock(
         'paris-time',
         'paris-date',
         'Europe/Paris'
+    );
+
+    updateClock(
+        'tahiti-time',
+        'tahiti-date',
+        'Pacific/Tahiti'
     );
 }
 
@@ -140,4 +177,5 @@ setInterval(updateClocks, 1000);
 </script>
 
 </body>
+
 </html>
