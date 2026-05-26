@@ -326,6 +326,8 @@
             --disable-session-crashed-bubble \
             --noerrdialogs \
             --disable-features=TranslateUI \
+            --disk-cache-size=1 \
+            --media-cache-size=1 \
             --lang=fr \
             http://localhost
 
