@@ -47,8 +47,8 @@ Permet de transformer un Raspberry PI en "mur d'images" DIY
 
 ```bash
 # Cloner le dépôt
-git clone <repository-url>
-cd pi-wall-image
+git clone https://github.com/kanzuke/pi-wall-image
+cd pi-wall-image/src
 
 # Installer les dépendances
 npm install
@@ -61,8 +61,8 @@ npm start
 ```
 
 Ouvrir :
-- **Affichage mural** → `http://localhost:3000`
-- **Administration** → `http://localhost:3000/admin.html`
+- **Affichage mural** → `http://localhost:3000/display.html`
+- **Administration** → `http://localhost:3000/admin/login.html`
 
 ---
 
@@ -82,7 +82,12 @@ Chaque zone contient un `mode` actif et un objet `modes` contenant la configurat
         "interval": 5000,
         "imageOrder": []
       },
-      "remote-screen": {}
+      "remote-screen": {
+        "vncHost": "",
+        "vncPort": 5900,
+        "wsPort": null,
+        "password": ""
+      }
     }
   },
   "top-right": {
@@ -95,7 +100,12 @@ Chaque zone contient un `mode` actif et un objet `modes` contenant la configurat
         "interval": 8000,
         "imageOrder": []
       },
-      "remote-screen": {}
+      "remote-screen": {
+        "vncHost": "",
+        "vncPort": 5900,
+        "wsPort": null,
+        "password": ""
+      }
     }
   },
   "bottom-left": {
@@ -108,7 +118,12 @@ Chaque zone contient un `mode` actif et un objet `modes` contenant la configurat
         "interval": 3000,
         "imageOrder": ["photo1.jpg", "photo2.jpg"]
       },
-      "remote-screen": {}
+      "remote-screen": {
+        "vncHost": "192.168.1.111",
+        "vncPort": 5900,
+        "wsPort": 6080,
+        "password": "novnc"
+      }
     }
   },
   "bottom-right": {
@@ -121,7 +136,12 @@ Chaque zone contient un `mode` actif et un objet `modes` contenant la configurat
         "interval": 5000,
         "imageOrder": []
       },
-      "remote-screen": {}
+      "remote-screen": {
+        "vncHost": "192.168.1.111",
+        "vncPort": 5900,
+        "wsPort": 6081,
+        "password": "novnc"
+      }
     }
   }
 }
