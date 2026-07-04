@@ -1,0 +1,421 @@
+# playbook-wall.yml
+#
+# Mur d'images Raspberry Pi 4
+#
+# Gestion des cadres par SWAY + Node.js
+#
+# Zones :
+#   Haut gauche  : Customisable
+#   Haut droite  : Customisable
+#   Bas gauche   : Customisable
+#   Bas droite   : Customisable
+#
+# Structure du dépôt :
+#
+# .
+# ├── src
+# │   ├── server.js          # Point d'entrée Express + WebSocket
+# │   ├── config.json        # Configuration des 4 zones (par position)
+# │   ├── package.json
+# │   ├── public/
+# │   │   ├── admin
+# │   │   │   ├── dashboard.html
+# │   │   │   └── login.html
+# │   │   ├── novnc
+# │   │   └── display.html   # Page d'affichage 2×2 plein écran
+# │   ├── uploads/           # Images uploadées par zone
+# │   │   ├── top-left/
+# │   │   ├── top-right/
+# │   │   ├── bottom-left/
+# │   │   └── bottom-right/
+#
+# Déploiement :
+# ansible-playbook -i localhost, -c local playbook-wall.yml
+#
+
+---
+- name: Deploy kiosk-app wallboard
+  hosts: localhost
+  become: true
+
+  vars:
+    app_root: "/opt/pi-wall-image"
+    app_user: "kiosk"
+    app_group: "kiosk"
+    
+    node_port: 3000
+    nodejs_version: "20"
+    
+    screen_width: 1920
+    screen_height: 1080
+    
+    admin_password: "admin123"  # À CHANGER !
+
+  tasks:
+
+    # ----------------------------------------------------------
+    # UPDATE
+    # ----------------------------------------------------------
+
+    - name: Update apt cache
+      apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    # ----------------------------------------------------------
+    # INSTALL SYSTEM PACKAGES
+    # ----------------------------------------------------------
+
+    - name: Install system packages
+      apt:
+        name:
+          - sway
+          - seatd
+          - wayland-protocols
+          - xwayland
+          - chromium-browser
+          - wayvnc
+          - rsync
+          - jq
+          - curl
+          - git
+          - build-essential
+          - python3
+        state: present
+
+    # ----------------------------------------------------------
+    # INSTALL NODE.JS
+    # ----------------------------------------------------------
+
+    - name: Add NodeSource GPG key
+      apt_key:
+        url: https://deb.nodesource.com/gpgkey/nodesource.gpg.key
+        state: present
+
+    - name: Add NodeSource repository
+      apt_repository:
+        repo: "deb https://deb.nodesource.com/node_{{ nodejs_version }}.x nodistro main"
+        state: present
+
+    - name: Install Node.js
+      apt:
+        name: nodejs
+        state: present
+
+    # ----------------------------------------------------------
+    # ENABLE SEATD
+    # ----------------------------------------------------------
+
+    - name: Enable seatd
+      service:
+        name: seatd
+        state: started
+        enabled: true
+
+    # ----------------------------------------------------------
+    # CREATE APPLICATION USER
+    # ----------------------------------------------------------
+
+    - name: Create kiosk user
+      user:
+        name: "{{ app_user }}"
+        shell: /bin/bash
+        home: "/home/{{ app_user }}"
+        createhome: true
+
+    # ----------------------------------------------------------
+    # APPLICATION DIRECTORIES
+    # ----------------------------------------------------------
+
+    - name: Create app root directory
+      file:
+        path: "{{ app_root }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0755"
+
+    # ----------------------------------------------------------
+    # COPY APPLICATION FILES
+    # ----------------------------------------------------------
+
+    - name: Copy application files
+      synchronize:
+        src: ./src
+        dest: "{{ app_root }}/"
+        recursive: true
+        delete: false
+        rsync_opts:
+          - "--exclude=node_modules"
+          - "--exclude=.git"
+          - "--exclude=.env"
+      become: false
+
+    - name: Fix application ownership
+      file:
+        path: "{{ app_root }}"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        recurse: true
+
+    # ----------------------------------------------------------
+    # NODE.JS SETUP
+    # ----------------------------------------------------------
+
+    - name: Install Node.js dependencies
+      shell: |
+        cd {{ app_root }}
+        npm install --production
+      become: true
+      become_user: "{{ app_user }}"
+      environment:
+        NODE_ENV: production
+
+    - name: Create .env file
+      copy:
+        dest: "{{ app_root }}/.env"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0600"
+        content: |
+          NODE_ENV=production
+          PORT={{ node_port }}
+          ADMIN_PASSWORD={{ admin_password }}
+          SESSION_SECRET={{ ansible_date_time.iso8601_basic_short }}
+
+    - name: Create initial config.json if not exists
+      copy:
+        dest: "{{ app_root }}/config.json"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0644"
+        content: |
+          {
+            "top-left": {
+              "mode": "static-url",
+              "config": {
+                "url": "about:blank"
+              }
+            },
+            "top-right": {
+              "mode": "static-url",
+              "config": {
+                "url": "about:blank"
+              }
+            },
+            "bottom-left": {
+              "mode": "slideshow",
+              "config": {
+                "interval": 5000
+              }
+            },
+            "bottom-right": {
+              "mode": "static-url",
+              "config": {
+                "url": "about:blank"
+              }
+            }
+          }
+        force: false
+
+    # ----------------------------------------------------------
+    # SYSTEMD SERVICE
+    # ----------------------------------------------------------
+
+    - name: Create systemd service file
+      copy:
+        dest: /etc/systemd/system/pi-wall-image.service
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Pi Wall Image - Wall Display Server
+          After=network-online.target
+          Wants=network-online.target
+
+          [Service]
+          Type=simple
+          User={{ app_user }}
+          WorkingDirectory={{ app_root }}
+          ExecStart=/usr/bin/node {{ app_root }}/server.js
+          Restart=always
+          RestartSec=10
+          StandardOutput=journal
+          StandardError=journal
+          Environment="NODE_ENV=production"
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: true
+
+    - name: Enable pi-wall-image service
+      systemd:
+        name: pi-wall-image
+        enabled: true
+        state: started
+
+    # ----------------------------------------------------------
+    # WALL IP UPDATER SERVICE
+    # ----------------------------------------------------------
+
+    - name: Create wall-ip updater script
+      copy:
+        dest: /usr/local/bin/update-wall-ip.sh
+        owner: root
+        group: root
+        mode: "0755"
+        content: |
+          #!/bin/bash
+
+          OUTPUT="{{ app_root }}/uploads/ip.txt"
+
+          while true
+          do
+              IP=$(ip route get 1 | awk '{print $7;exit}')
+              echo "$IP" > "$OUTPUT"
+              sleep 5
+          done
+
+    - name: Create wall-ip systemd service
+      copy:
+        dest: /etc/systemd/system/wall-ip.service
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Wall IP Updater
+          After=network-online.target
+
+          [Service]
+          ExecStart=/usr/local/bin/update-wall-ip.sh
+          Restart=always
+          RestartSec=5
+          User=root
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd
+      systemd:
+        daemon_reload: true
+
+    - name: Enable wall-ip service
+      systemd:
+        name: wall-ip.service
+        enabled: true
+        state: started
+
+    # ----------------------------------------------------------
+    # SWAY CONFIGURATION
+    # ----------------------------------------------------------
+
+    - name: Create sway config directory
+      file:
+        path: /home/pi/.config/sway
+        state: directory
+        owner: pi
+        group: pi
+        mode: "0755"
+
+    - name: Configure sway
+      copy:
+        dest: /home/pi/.config/sway/config
+        owner: pi
+        group: pi
+        mode: "0644"
+        content: |
+          output * bg #000000 solid_color
+
+          exec chromium-browser \
+            --kiosk \
+            --start-fullscreen \
+            --disable-infobars \
+            --disable-session-crashed-bubble \
+            --noerrdialogs \
+            --disable-features=TranslateUI \
+            --disk-cache-size=1 \
+            --media-cache-size=1 \
+            --lang=fr \
+            http://localhost:{{ node_port }}/display.html
+
+    # ----------------------------------------------------------
+    # AUTOLOGIN CONFIGURATION
+    # ----------------------------------------------------------
+
+    - name: Create systemd override directory
+      file:
+        path: /etc/systemd/system/getty@tty1.service.d
+        state: directory
+        mode: "0755"
+
+    - name: Configure TTY1 autologin
+      copy:
+        dest: /etc/systemd/system/getty@tty1.service.d/autologin.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          [Service]
+          ExecStart=
+          ExecStart=-/sbin/agetty --autologin pi --noclear %I $TERM
+
+    - name: Configure bash_profile for Sway
+      copy:
+        dest: /home/pi/.bash_profile
+        owner: pi
+        group: pi
+        mode: "0644"
+        content: |
+          if [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
+              exec sway
+          fi
+
+    - name: Reload systemd
+      systemd:
+        daemon_reload: true
+
+    # ----------------------------------------------------------
+    # FINAL MESSAGE
+    # ----------------------------------------------------------
+
+    - name: Deployment complete
+      debug:
+        msg: |
+
+          ✅ Déploiement kiosk-app terminé !
+
+          Application :
+            - Localisation : {{ app_root }}
+            - Utilisateur : {{ app_user }}
+            - Service : kiosk-app
+            - Port Node.js : {{ node_port }}
+
+          Après reboot :
+            - Autologin utilisateur pi
+            - Lancement automatique Sway
+            - Ouverture de Chromium sur http://localhost:{{ node_port }}/display.html
+
+          Interface d'administration :
+            - URL : http://localhost:/admin
+            - Mot de passe : {{ admin_password }}
+            - ⚠️ À changer immédiatement !
+
+          Services systemd :
+            - kiosk-app : systemctl status kiosk-app
+            - wall-ip : systemctl status wall-ip
+            - nginx : systemctl status nginx
+            - smbd : systemctl status smbd
+
+          Logs :
+            - journalctl -u kiosk-app -f
+            - tail -f /var/log/nginx/error.log
+
+          Commandes utiles :
+            - Redémarrer l'app : systemctl restart kiosk-app
+            - Vérifier statut : systemctl status kiosk-app
+            - Voir les logs : journalctl -u kiosk-app -n 50
