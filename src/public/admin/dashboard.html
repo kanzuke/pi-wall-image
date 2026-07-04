@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Dashboard Admin</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: sans-serif;
+    background: #0d1117;
+    color: #eee;
+    margin: 0;
+    padding: 20px;
+  }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+  }
+  h1 { margin: 0; }
+  .logout-btn {
+    background: #da3633;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  .grid-zones {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .zone {
+    background: #161b22;
+    border-radius: 10px;
+    padding: 20px;
+    border: 1px solid #30363d;
+  }
+  .zone h2 { margin-top: 0; color: #58a6ff; }
+  select, input[type="text"], input[type="number"] {
+    width: 100%;
+    padding: 8px;
+    margin: 8px 0;
+    background: #0d1117;
+    color: #eee;
+    border: 1px solid #30363d;
+    border-radius: 5px;
+  }
+  .mode-panel { display: none; margin-top: 15px; }
+  .mode-panel.active { display: block; }
+  .gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 10px 0;
+  }
+  .thumb {
+    position: relative;
+    width: 80px;
+    height: 80px;
+  }
+  .thumb img {
+    width: 100%; height: 100%; object-fit: cover;
+    border-radius: 5px;
+  }
+  .thumb button {
+    position: absolute;
+    top: -5px; right: -5px;
+    background: #da3633;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px; height: 20px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  button.action-btn {
+    background: #238636;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 10px;
+  }
+  button.action-btn:hover { background: #2ea043; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>🖥️ Administration du mur d'images</h1>
+    <button class="logout-btn" onclick="logout()">Déconnexion</button>
+  </header>
+
+  <div class="grid-zones" id="zones"></div>
+
+  <script>
+    const POSITIONS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+    const LABELS = {
+      'top-left': 'Haut Gauche',
+      'top-right': 'Haut Droite',
+      'bottom-left': 'Bas Gauche',
+      'bottom-right': 'Bas Droite'
+    };
+
+    async function init() {
+      const sessionRes = await fetch('/api/session');
+      const session = await sessionRes.json();
+      if (!session.authenticated) {
+        window.location.href = '/admin/login.html';
+        return;
+      }
+
+      const zonesEl = document.getElementById('zones');
+      const config = await (await fetch('/api/config')).json();
+
+      POSITIONS.forEach(pos => {
+        zonesEl.innerHTML += renderZone(pos, config[pos]);
+      });
+
+      POSITIONS.forEach(pos => {
+        setupZoneEvents(pos);
+        if (config[pos].mode === 'slideshow') {
+          refreshGallery(pos);
+        }
+      });
+    }
+
+    function renderZone(position, zoneConfig) {
+  const urlValue = zoneConfig.modes['static-url'].url || '';
+  const intervalValue = zoneConfig.modes['slideshow'].interval || 5000;
+
+  return `
+    <div class="zone" data-position="${position}">
+      <h2>${LABELS[position]}</h2>
+      <select class="mode-select" data-position="${position}">
+        <option value="static-url" ${zoneConfig.mode === 'static-url' ? 'selected' : ''}>URL statique</option>
+        <option value="slideshow" ${zoneConfig.mode === 'slideshow' ? 'selected' : ''}>Diaporama</option>
+        <option value="remote-screen" ${zoneConfig.mode === 'remote-screen' ? 'selected' : ''}>Écran distant</option>
+      </select>
+
+      <div class="mode-panel panel-static-url ${zoneConfig.mode === 'static-url' ? 'active' : ''}">
+        <label>URL :</label>
+        <input type="text" class="url-input" value="${urlValue}" placeholder="https://...">
+        <button class="action-btn save-url-btn">Enregistrer</button>
+      </div>
+
+      <div class="mode-panel panel-slideshow ${zoneConfig.mode === 'slideshow' ? 'active' : ''}">
+        <label>Intervalle (ms) :</label>
+        <input type="number" class="interval-input" value="${intervalValue}">
+        <input type="file" class="upload-input" multiple accept="image/*">
+        <button class="action-btn upload-btn">Uploader les images</button>
+        <div class="gallery"></div>
+      </div>
+
+      <div class="mode-panel panel-remote-screen ${zoneConfig.mode === 'remote-screen' ? 'active' : ''}">
+        <p>⚠️ Configuration écran distant à venir.</p>
+      </div>
+    </div>
+  `;
+}
+
+    function setupZoneEvents(position) {
+      const zoneEl = document.querySelector(`.zone[data-position="${position}"]`);
+
+      // Changement de mode
+      zoneEl.querySelector('.mode-select').addEventListener('change', async (e) => {
+        const mode = e.target.value;
+        zoneEl.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
+        zoneEl.querySelector(`.panel-${mode}`).classList.add('active');
+
+        // Récupère la config actuelle du serveur pour restaurer les valeurs du mode choisi
+        const zoneConfig = await (await fetch(`/api/config/${position}`)).json();
+
+        let configPayload = { mode, config: {} };
+
+        if (mode === 'static-url') {
+          const savedUrl = zoneConfig.modes['static-url'].url || 'about:blank';
+          zoneEl.querySelector('.url-input').value = savedUrl;
+          configPayload.config.url = savedUrl;
+        } else if (mode === 'slideshow') {
+          const savedInterval = zoneConfig.modes['slideshow'].interval || 5000;
+          zoneEl.querySelector('.interval-input').value = savedInterval;
+          configPayload.config.interval = savedInterval;
+          refreshGallery(position);
+        }
+
+        await saveConfig(position, configPayload);
+      });
+
+      // Sauvegarde URL
+      zoneEl.querySelector('.save-url-btn').addEventListener('click', async () => {
+        const url = zoneEl.querySelector('.url-input').value;
+        await saveConfig(position, { mode: 'static-url', config: { url } });
+        alert('URL enregistrée pour ' + position);
+      });
+
+      // Upload images
+      zoneEl.querySelector('.upload-btn').addEventListener('click', async () => {
+        const input = zoneEl.querySelector('.upload-input');
+        if (input.files.length === 0) return;
+
+        const formData = new FormData();
+        for (const file of input.files) {
+          formData.append('images', file);
+        }
+
+        const res = await fetch(`/api/upload/${position}`, {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          input.value = '';
+          refreshGallery(position);
+
+          // S'assurer que le mode est bien "slideshow" avec l'intervalle actuel
+          const interval = parseInt(zoneEl.querySelector('.interval-input').value) || 5000;
+          await saveConfig(position, { mode: 'slideshow', config: { interval } });
+        }
+        
+      });
+
+      // Changement d'intervalle
+      zoneEl.querySelector('.interval-input').addEventListener('change', async (e) => {
+        const interval = parseInt(e.target.value) || 5000;
+        await saveConfig(position, { mode: 'slideshow', config: { interval } });
+      });
+
+
+      
+      // Validation par Entrée sur le champ URL
+      const urlInput = zoneEl.querySelector('.url-input');
+      urlInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          zoneEl.querySelector('.save-url-btn').click();
+        }
+      });
+
+      // Validation par Entrée sur le champ intervalle
+      const intervalInput = zoneEl.querySelector('.interval-input');
+      intervalInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          intervalInput.dispatchEvent(new Event('change'));
+        }
+      });
+    }
+
+    async function saveConfig(position, payload) {
+      await fetch(`/api/config/${position}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    async function refreshGallery(position) {
+      const res = await fetch(`/api/images/${position}`);
+      const data = await res.json();
+
+      const galleryEl = document.querySelector(`.zone[data-position="${position}"] .gallery`);
+      galleryEl.innerHTML = data.images.map(img => `
+        <div class="thumb">
+          <img src="/uploads/${position}/${img}">
+          <button onclick="deleteImage('${position}', '${img}')">×</button>
+        </div>
+      `).join('');
+    }
+
+    async function deleteImage(position, filename) {
+      await fetch(`/api/images/${position}/${filename}`, { method: 'DELETE' });
+      refreshGallery(position);
+    }
+
+    async function logout() {
+      await fetch('/api/logout', { method: 'POST' });
+      window.location.href = '/admin/login.html';
+    }
+
+    init();
+  </script>
+</body>
+</html>

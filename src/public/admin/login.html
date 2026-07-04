@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Connexion - Administration</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background: #1a1a2e;
+    }
+    .login-box {
+      background: white;
+      padding: 40px;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      width: 300px;
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 20px;
+      text-align: center;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #4361ee;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 15px;
+    }
+    button:hover {
+      background: #3651d4;
+    }
+    #error {
+      color: red;
+      display: none;
+      margin-top: 10px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <h1>🔒 Administration</h1>
+    <form id="loginForm">
+      <input type="password" id="password" placeholder="Mot de passe" required autofocus>
+      <button type="submit">Se connecter</button>
+      <div id="error">Mot de passe incorrect</div>
+    </form>
+  </div>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const password = document.getElementById('password').value;
+      const errorEl = document.getElementById('error');
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          window.location.href = '/admin/dashboard.html';
+        } else {
+          errorEl.style.display = 'block';
+        }
+      } catch (err) {
+        console.error('Erreur:', err);
+        errorEl.textContent = 'Erreur de connexion au serveur';
+        errorEl.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>

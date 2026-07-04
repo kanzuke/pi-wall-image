@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Mur d'images</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { overflow:hidden; background:#000; }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    width: 100vw;
+    height: 100vh;
+    gap: 2px;
+    background: #333;
+  }
+  iframe { border: none; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <iframe id="top-left" src="/frame/top-left"></iframe>
+    <iframe id="top-right" src="/frame/top-right"></iframe>
+    <iframe id="bottom-left" src="/frame/bottom-left"></iframe>
+    <iframe id="bottom-right" src="/frame/bottom-right"></iframe>
+  </div>
+
+  <script>
+    const ws = new WebSocket('ws://' + location.host);
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'config-updated') {
+        // Recharge l'iframe concernée avec sa nouvelle URL de mode
+        const iframe = document.getElementById(data.position);
+        if (iframe) {
+          iframe.src = '/frame/' + data.position + '?t=' + Date.now();
+        }
+      }
+    };
+    ws.onerror = (err) => console.error('WS error', err);
+  </script>
+</body>
+</html>

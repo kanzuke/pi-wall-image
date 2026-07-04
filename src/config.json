@@ -1,0 +1,58 @@
+{
+  "top-left": {
+    "mode": "slideshow",
+    "modes": {
+      "static-url": {
+        "url": "https://chat.fapf.fr/inverse"
+      },
+      "slideshow": {
+        "interval": 5000
+      },
+      "mirror": {
+        "sourceId": ""
+      }
+    }
+  },
+  "top-right": {
+    "mode": "static-url",
+    "modes": {
+      "static-url": {
+        "url": "https://cop.fapf.fr"
+      },
+      "slideshow": {
+        "interval": 5000
+      },
+      "mirror": {
+        "sourceId": ""
+      }
+    }
+  },
+  "bottom-left": {
+    "mode": "slideshow",
+    "modes": {
+      "static-url": {
+        "url": ""
+      },
+      "slideshow": {
+        "interval": 5000
+      },
+      "mirror": {
+        "sourceId": ""
+      }
+    }
+  },
+  "bottom-right": {
+    "mode": "slideshow",
+    "modes": {
+      "static-url": {
+        "url": ""
+      },
+      "slideshow": {
+        "interval": 5000
+      },
+      "mirror": {
+        "sourceId": ""
+      }
+    }
+  }
+}
