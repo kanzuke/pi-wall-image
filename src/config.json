@@ -8,8 +8,11 @@
       "slideshow": {
         "interval": 5000
       },
-      "mirror": {
-        "sourceId": ""
+      "remote-screen": {
+        "vncHost": "",
+        "vncPort": 5900,
+        "wsPort": null,
+        "password": ""
       }
     }
   },
@@ -17,13 +20,16 @@
     "mode": "static-url",
     "modes": {
       "static-url": {
-        "url": "https://cop.fapf.fr"
+        "url": "https://www.bing.com"
       },
       "slideshow": {
         "interval": 5000
       },
-      "mirror": {
-        "sourceId": ""
+      "remote-screen": {
+        "vncHost": "",
+        "vncPort": 5900,
+        "wsPort": null,
+        "password": ""
       }
     }
   },
@@ -31,27 +37,33 @@
     "mode": "slideshow",
     "modes": {
       "static-url": {
-        "url": ""
+        "url": "about:blank"
       },
       "slideshow": {
         "interval": 5000
       },
-      "mirror": {
-        "sourceId": ""
+      "remote-screen": {
+        "vncHost": "192.168.1.111",
+        "vncPort": 5900,
+        "wsPort": 6080,
+        "password": "novnc"
       }
     }
   },
   "bottom-right": {
-    "mode": "slideshow",
+    "mode": "remote-screen",
     "modes": {
       "static-url": {
-        "url": ""
+        "url": "https://www.qwant.com"
       },
       "slideshow": {
         "interval": 5000
       },
-      "mirror": {
-        "sourceId": ""
+      "remote-screen": {
+        "vncHost": "192.168.1.111",
+        "vncPort": 5900,
+        "wsPort": 6081,
+        "password": "novnc"
       }
     }
   }

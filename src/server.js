@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const WebSocket = require('ws');
+const { startVncProxy, stopVncProxy, stopAllProxies } = require('./vnc-proxy');
 
 const app = express();
 const server = http.createServer(app);
@@ -161,6 +162,16 @@ app.post('/api/config/:position', requireAuth, (req, res) => {
   const { mode } = req.body;
   const fullConfig = updateConfig(position, req.body);
   const zoneConfig = fullConfig[position];
+
+  // Gestion du proxy VNC
+  if (mode === 'remote-screen') {
+    const cfg = zoneConfig.modes['remote-screen'];
+    if (cfg.vncHost && cfg.vncPort && cfg.wsPort) {
+      startVncProxy(position, cfg);
+    }
+  } else {
+    stopVncProxy(position);
+  }
 
   broadcast({
     type: 'config-updated',
@@ -372,16 +383,59 @@ app.get('/frame/:position', (req, res) => {
     case 'slideshow':
       return res.redirect(`/slideshow/${position}`);
 
-    case 'remote-screen':
-      // À implémenter plus tard (noVNC, etc.)
-      return res.send(`<html><body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding-top:40vh;">
-        Écran distant non configuré pour ${position}
-      </body></html>`);
+    case 'remote-screen': {
+      const cfg = zone.modes['remote-screen'];
+      if (!cfg.wsPort) {
+        return res.send('<p style="color:white;background:#000;">VNC non configuré</p>');
+      }
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"></head>
+        <body style="margin:0;background:#000;">
+          <iframe src="/novnc/vnc.html?host=${req.hostname}&port=${cfg.wsPort}&autoconnect=true&resize=scale&password=${encodeURIComponent(cfg.password||'')}"
+            style="width:100vw;height:100vh;border:none;"></iframe>
+        </body>
+        </html>
+      `);
+    }
 
     default:
       return res.send('<html><body style="background:#000;"></body></html>');
   }
 });
+
+
+
+// ==================== NOVNC ====================
+app.use('/novnc', express.static(path.join(__dirname, 'public/novnc')));
+
+// Au démarrage du serveur : lancer les proxies pour les zones déjà en remote-screen
+function initRemoteScreenProxies() {
+  const fullConfig = loadConfig();
+  POSITIONS.forEach(position => {
+    const zone = fullConfig[position];
+    if (zone.mode === 'remote-screen' && zone.modes['remote-screen']) {
+      const cfg = zone.modes['remote-screen'];
+      if (cfg.vncHost && cfg.vncPort && cfg.wsPort) {
+        startVncProxy(position, cfg);
+      }
+    }
+  });
+}
+
+// Nettoyage propre à l'arrêt du serveur
+process.on('SIGINT', () => {
+  stopAllProxies();
+  process.exit();
+});
+process.on('SIGTERM', () => {
+  stopAllProxies();
+  process.exit();
+});
+
+
+
 
 
 
@@ -411,4 +465,5 @@ server.listen(PORT, () => {
   console.log(`✅ Serveur démarré sur http://localhost:${PORT}`);
   console.log(`📺 Affichage : http://localhost:${PORT}/display.html`);
   console.log(`🔧 Admin     : http://localhost:${PORT}/admin/login.html`);
+  initRemoteScreenProxies();
 });

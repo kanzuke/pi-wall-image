@@ -129,38 +129,59 @@
     }
 
     function renderZone(position, zoneConfig) {
-  const urlValue = zoneConfig.modes['static-url'].url || '';
-  const intervalValue = zoneConfig.modes['slideshow'].interval || 5000;
+      const urlValue = zoneConfig.modes['static-url'].url || '';
+      const intervalValue = zoneConfig.modes['slideshow'].interval || 5000;
+      
+      // Config remote-screen existante
+      const remoteScreenConfig = zoneConfig.modes['remote-screen'] || {};
+      const vncHost = remoteScreenConfig.vncHost || '';
+      const vncPort = remoteScreenConfig.vncPort || 5900;
+      const wsPort = remoteScreenConfig.wsPort || '';
+      const vncPassword = remoteScreenConfig.password || '';
 
-  return `
-    <div class="zone" data-position="${position}">
-      <h2>${LABELS[position]}</h2>
-      <select class="mode-select" data-position="${position}">
-        <option value="static-url" ${zoneConfig.mode === 'static-url' ? 'selected' : ''}>URL statique</option>
-        <option value="slideshow" ${zoneConfig.mode === 'slideshow' ? 'selected' : ''}>Diaporama</option>
-        <option value="remote-screen" ${zoneConfig.mode === 'remote-screen' ? 'selected' : ''}>Écran distant</option>
-      </select>
+      return `
+        <div class="zone" data-position="${position}">
+          <h2>${LABELS[position]}</h2>
+          <select class="mode-select" data-position="${position}">
+            <option value="static-url" ${zoneConfig.mode === 'static-url' ? 'selected' : ''}>URL statique</option>
+            <option value="slideshow" ${zoneConfig.mode === 'slideshow' ? 'selected' : ''}>Diaporama</option>
+            <option value="remote-screen" ${zoneConfig.mode === 'remote-screen' ? 'selected' : ''}>Écran distant</option>
+          </select>
 
-      <div class="mode-panel panel-static-url ${zoneConfig.mode === 'static-url' ? 'active' : ''}">
-        <label>URL :</label>
-        <input type="text" class="url-input" value="${urlValue}" placeholder="https://...">
-        <button class="action-btn save-url-btn">Enregistrer</button>
-      </div>
+          <div class="mode-panel panel-static-url ${zoneConfig.mode === 'static-url' ? 'active' : ''}">
+            <label>URL :</label>
+            <input type="text" class="url-input" value="${urlValue}" placeholder="https://...">
+            <button class="action-btn save-url-btn">Enregistrer</button>
+          </div>
 
-      <div class="mode-panel panel-slideshow ${zoneConfig.mode === 'slideshow' ? 'active' : ''}">
-        <label>Intervalle (ms) :</label>
-        <input type="number" class="interval-input" value="${intervalValue}">
-        <input type="file" class="upload-input" multiple accept="image/*">
-        <button class="action-btn upload-btn">Uploader les images</button>
-        <div class="gallery"></div>
-      </div>
+          <div class="mode-panel panel-slideshow ${zoneConfig.mode === 'slideshow' ? 'active' : ''}">
+            <label>Intervalle (ms) :</label>
+            <input type="number" class="interval-input" value="${intervalValue}">
+            <input type="file" class="upload-input" multiple accept="image/*">
+            <button class="action-btn upload-btn">Uploader les images</button>
+            <div class="gallery"></div>
+          </div>
 
-      <div class="mode-panel panel-remote-screen ${zoneConfig.mode === 'remote-screen' ? 'active' : ''}">
-        <p>⚠️ Configuration écran distant à venir.</p>
-      </div>
-    </div>
-  `;
-}
+          <div class="mode-panel panel-remote-screen ${zoneConfig.mode === 'remote-screen' ? 'active' : ''}">
+            <h3 style="margin-top: 0; color: #58a6ff;">Configuration Écran Distant (VNC)</h3>
+            
+            <label>Adresse IP du serveur VNC :</label>
+            <input type="text" class="vnc-host" value="${vncHost}" placeholder="192.168.1.50">
+            
+            <label>Port VNC (généralement 5900) :</label>
+            <input type="number" class="vnc-port" value="${vncPort}" min="1" max="65535">
+            
+            <label>Port WebSocket local (pour le proxy) :</label>
+            <input type="number" class="ws-port" value="${wsPort}" placeholder="6080" min="1" max="65535">
+            
+            <label>Mot de passe VNC (optionnel) :</label>
+            <input type="password" class="vnc-password" value="${vncPassword}" placeholder="••••••••">
+            
+            <button class="action-btn save-remote-screen-btn">Enregistrer</button>
+          </div>
+        </div>
+      `;
+    }
 
     function setupZoneEvents(position) {
       const zoneEl = document.querySelector(`.zone[data-position="${position}"]`);
@@ -249,7 +270,53 @@
           intervalInput.dispatchEvent(new Event('change'));
         }
       });
+
+      // Sauvegarde configuration remote-screen
+      zoneEl.querySelector('.save-remote-screen-btn').addEventListener('click', async () => {
+        const vncHost = zoneEl.querySelector('.vnc-host').value.trim();
+        const vncPort = parseInt(zoneEl.querySelector('.vnc-port').value, 10) || 5900;
+        const wsPort = parseInt(zoneEl.querySelector('.ws-port').value, 10);
+        const vncPassword = zoneEl.querySelector('.vnc-password').value;
+
+        if (!vncHost || !wsPort) {
+          alert('Adresse VNC et port WebSocket requis.');
+          return;
+        }
+
+        if (wsPort < 1 || wsPort > 65535) {
+          alert('Port WebSocket invalide (1-65535).');
+          return;
+        }
+
+        const config = {
+          vncHost,
+          vncPort,
+          wsPort,
+          password: vncPassword
+        };
+
+        await saveConfig(position, { mode: 'remote-screen', config });
+        alert('Configuration écran distant enregistrée pour ' + LABELS[position]);
+      });
+
+      // Validation Entrée sur les champs remote-screen
+      const remoteInputs = [
+        zoneEl.querySelector('.vnc-host'),
+        zoneEl.querySelector('.vnc-port'),
+        zoneEl.querySelector('.ws-port'),
+        zoneEl.querySelector('.vnc-password')
+      ];
+
+      remoteInputs.forEach(input => {
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            zoneEl.querySelector('.save-remote-screen-btn').click();
+          }
+        });
+      });
     }
+    
 
     async function saveConfig(position, payload) {
       await fetch(`/api/config/${position}`, {

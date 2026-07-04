@@ -12,7 +12,7 @@ Permet de transformer un Raspberry PI en "mur d'images" DIY
 - **3 modes par zone** :
   - `static-url` — affiche une URL fixe via iframe
   - `slideshow` — diaporama d'images uploadées avec intervalle personnalisable
-  - `remote-screen` — placeholder pour écran distant (à venir)
+  - `remote-screen` — placeholder pour écran distant
 - **Upload d'images** par zone via l'interface d'administration
 - **Hot-reload en temps réel** via WebSocket : toute modification de config ou d'images recharge automatiquement la zone concernée
 - **Interface d'administration** pour configurer les modes, URLs, intervalles et uploader des images
@@ -28,9 +28,11 @@ Permet de transformer un Raspberry PI en "mur d'images" DIY
 │   ├── config.json        # Configuration des 4 zones (par position)
 │   ├── package.json
 │   ├── public/
-│   │   ├── display.html   # Page d'affichage 2×2 plein écran
-│   │   ├── admin.html     # Interface d'administration
-│   │   └── style.css      # CSS partagé (optionnel)
+│   │   ├── admin
+│   │   │   ├── dashboard.html
+│   │   │   └── login.html
+│   │   ├── novnc
+│   │   └── display.html   # Page d'affichage 2×2 plein écran
 │   ├── uploads/           # Images uploadées par zone
 │   │   ├── top-left/
 │   │   ├── top-right/
@@ -207,18 +209,14 @@ ws.onmessage = (event) => {
     }
   }
 };
+
+
 ```
+### NOVNC
 
----
+Pour l'affichage à distance d'ordinateurs, l'application utilise NoVNC, disponible ici: [https://github.com/novnc/noVNC](https://github.com/novnc/noVNC.git)
 
-## Roadmap / TODO
-
-- [ ] **remote-screen** — Implémenter le support des écrans distants (noVNC ou équivalent)
-- [ ] Interface d'administration : support du drag & drop pour l'ordre des images
-- [ ] Prévisualisation en temps réel des changements de mode dans l'admin
-- [ ] Authentication de l'interface d'administration
-- [ ] Support des formats vidéo en complément des images dans le mode slideshow
-- [ ] Configuration de la transition entre images (fondu, slide, etc.)
+Pour des raisons de simplicité d'installation, celui-ci est embarqué dans **pi-wall-image**, il est inutile de le récupérer.
 
 ---
 

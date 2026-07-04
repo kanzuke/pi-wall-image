@@ -2,4 +2,4 @@ src/uploads/top-left/*
 src/uploads/top-right/*
 src/uploads/bottom-left/*
 src/uploads/bottom-right/*
-src/package-lock.json
+src/node_modules
